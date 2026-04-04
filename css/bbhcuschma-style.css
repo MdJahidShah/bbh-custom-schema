@@ -1,0 +1,33 @@
+#bbhcustomschema-schema-container {
+    background-color: #f7f7f7 !important;
+    padding: 10px !important;
+    border: 1px solid #ccc !important;
+    border-radius: 5px !important;
+}
+
+strong#bbhcustomschema-schema-toggle {
+    font-size: 16px;
+    color: #0073aa !important; /* WordPress blue */
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#bbhcustomschema-schema-toggle:hover {
+    color: #005177; /* Darker blue on hover */
+}
+
+#bbhcustomschema-schema-box {
+    padding: 15px;
+    border-top: 1px solid #ddd;
+    background-color: #fff;
+    margin-top: 10px;
+    display: none; /* Initially hidden */
+}
+
+textarea#bbhcustomschema_custom_schema {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
