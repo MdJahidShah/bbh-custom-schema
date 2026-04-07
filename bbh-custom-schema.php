@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name: BBH Custom Schema
+ * Plugin Name: BBH Custom Schema – Add Custom JSON-LD to Your Website
  * Plugin URI: https://wordpress.org/plugins/bbh-custom-schema/
- * Description: Allows custom schema injection per post/page. Overrides other SEO plugin schemas if used.
- * Version: 1.2.0
+ * Description: Add custom JSON-LD schema to any post or page and override schema from other SEO plugins to control your structured data output.
+ * Version: 1.2.1
  * Requires at least: 5.2
  * Requires PHP: 7.2
  * Author: Jahid Shah
@@ -213,77 +213,88 @@ function bbhcuschma_settings_page_callback() {
     settings_errors( 'bbhcuschma_settings_group' );
 
     ?>
-    <div class="wrap bbhcuschma-settings-page">
-        <h1><?php echo esc_html__('BBH Custom Schema Settings', 'bbh-custom-schema'); ?></h1>
-        <p class="subheadingp"><?php echo esc_html__('Configure which post types should display the BBH Custom Schema meta box.', 'bbh-custom-schema'); ?></p>
-        
-        <form method="post" action="options.php">
+    
+    <div class="bbhcuschma-settings-page">
+        <div class="reportpagehead">
+            <h1><?php echo esc_html__('BBH Custom Schema Settings', 'bbh-custom-schema'); ?></h1>
+            <p class="subheadingp"><?php echo esc_html__('Configure which post types should display the BBH Custom Schema meta box.', 'bbh-custom-schema'); ?></p>
+        </div>
+        <div class="wrap bbhsettingpagewrapper">
             <?php
-            // Output security fields for the registered setting
-            settings_fields('bbhcuschma_settings_group');
+            // Show review notice inline after the intro paragraph
+            bbhcuschma_output_review_notice();
             ?>
-            
-            <table class="form-table bbhcuschma-settings-table">
-                <tr>
-                    <th class="enable-setting-text" scope="row">
-                        <?php echo esc_html__('Enable Meta Box For', 'bbh-custom-schema'); ?>
-                        <p class="description">
-                            <?php echo esc_html__('Check the post types where you want the BBH Custom Schema meta box to appear:', 'bbh-custom-schema'); ?>
-                        </p>
-                    </th>
-                </tr>
-                <tr>
-                    <td>
-                        <fieldset>
-                            <?php if (!empty($public_post_types)) : ?>
-                                <table class="widefat fixed striped">
-                                    <thead>
-                                        <tr>
-                                            <th style="width: 50px; padding-left: 5px;"><?php echo esc_html__('Enable', 'bbh-custom-schema'); ?></th>
-                                            <th><?php echo esc_html__('Post Type', 'bbh-custom-schema'); ?></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($public_post_types as $slug => $name) : ?>
-                                            <tr>
-                                                <td>
-                                                    <input 
-                                                        type="checkbox" 
-                                                        name="bbhcuschma_enabled_post_types[]" 
-                                                        id="bbhcuschma_post_type_<?php echo esc_attr($slug); ?>" 
-                                                        value="<?php echo esc_attr($slug); ?>"
-                                                        <?php checked(in_array($slug, $enabled_post_types, true)); ?>
-                                                    >
-                                                </td>
-                                                <td>
-                                                    <label for="bbhcuschma_post_type_<?php echo esc_attr($slug); ?>">
-                                                        <?php echo esc_html($name); ?>
-                                                        <span style="color: #666; font-size: 12px;">(<?php echo esc_html($slug); ?>)</span>
-                                                    </label>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            <?php else : ?>
-                                <p><?php echo esc_html__('No public post types found.', 'bbh-custom-schema'); ?></p>
-                            <?php endif; ?>
-                            
-                            <br>
-                            <p class="description">
-                                <strong><?php echo esc_html__('Note:', 'bbh-custom-schema'); ?></strong>
-                                <?php echo esc_html__('Existing schema data on your posts and pages will not be affected. Only the visibility of the meta box will change based on your selection.', 'bbh-custom-schema'); ?>
+
+            <form method="post" action="options.php">
+                <?php
+                // Output security fields for the registered setting
+                settings_fields('bbhcuschma_settings_group');
+                ?>
+                
+                <table class="form-table bbhcuschma-settings-table">
+                    <tr>
+                        <th class="enable-setting-text" scope="row">
+                            <p style="font-size: 20px;font-weight: 700;margin: 0;padding-top: 10px;">
+                                <?php echo esc_html__('Enable Meta Box For', 'bbh-custom-schema'); ?>
                             </p>
-                        </fieldset>
-                    </td>
-                </tr>
-            </table>
-            
-            <?php
-            // Output save button
-            submit_button(__('Save Settings', 'bbh-custom-schema'));
-            ?>
-        </form>
+                            <p class="description">
+                                <?php echo esc_html__('Check the post types where you want the BBH Custom Schema meta box to appear:', 'bbh-custom-schema'); ?>
+                            </p>
+                        </th>
+                    </tr>
+                    <tr>
+                        <td>
+                            <fieldset>
+                                <?php if (!empty($public_post_types)) : ?>
+                                    <table class="widefat fixed striped">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 50px; padding-left: 10px;"><?php echo esc_html__('Enable', 'bbh-custom-schema'); ?></th>
+                                                <th><?php echo esc_html__('Post Type', 'bbh-custom-schema'); ?></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($public_post_types as $slug => $name) : ?>
+                                                <tr>
+                                                    <td>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            name="bbhcuschma_enabled_post_types[]" 
+                                                            id="bbhcuschma_post_type_<?php echo esc_attr($slug); ?>" 
+                                                            value="<?php echo esc_attr($slug); ?>"
+                                                            <?php checked(in_array($slug, $enabled_post_types, true)); ?>
+                                                        >
+                                                    </td>
+                                                    <td>
+                                                        <label for="bbhcuschma_post_type_<?php echo esc_attr($slug); ?>">
+                                                            <?php echo esc_html($name); ?>
+                                                            <span style="color: #666; font-size: 12px;">(<?php echo esc_html($slug); ?>)</span>
+                                                        </label>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                <?php else : ?>
+                                    <p><?php echo esc_html__('No public post types found.', 'bbh-custom-schema'); ?></p>
+                                <?php endif; ?>
+                                
+                                <br>
+                                <p class="description">
+                                    <strong><?php echo esc_html__('Note:', 'bbh-custom-schema'); ?></strong>
+                                    <?php echo esc_html__('Existing schema data on your posts and pages will not be affected. Only the visibility of the meta box will change based on your selection.', 'bbh-custom-schema'); ?>
+                                </p>
+                            </fieldset>
+                        </td>
+                    </tr>
+                </table>
+                
+                <?php
+                // Output save button
+                submit_button(__('Save Settings', 'bbh-custom-schema'));
+                ?>
+            </form>
+        </div>
     </div>
     <?php
 }
@@ -334,6 +345,29 @@ function bbhcuschma_enqueue_admin_script($hook) {
     }
 }
 add_action('admin_enqueue_scripts', 'bbhcuschma_enqueue_admin_script');
+
+add_action('admin_enqueue_scripts', 'bbhcuschma_enqueue_review_script');
+
+function bbhcuschma_enqueue_review_script($hook) {
+
+    wp_enqueue_script(
+        'bbhcuschma-schema-review',
+        plugin_dir_url(__FILE__) . 'js/bbhcuschma-schema-review.js',
+        ['jquery'],
+        '1.0',
+        true
+    );
+
+    wp_localize_script(
+        'bbhcuschma-schema-review',
+        'bbhcuschmaSchemaReview',
+        [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce'   => wp_create_nonce('bbhcuschma_review_nonce')
+        ]
+    );
+}
+
 
 // ============================================================================
 // META BOX REGISTRATION
@@ -507,11 +541,17 @@ function bbhcuschma_custom_schema_documentation_page() {
     ?>
     <div class="bbhcsh-wrap">
         <div class="admin-bbhcshrow">
-            <div class="reportpagehead">
+            <div class="reportpagehead" style="width: 100%;">
                 <h1 class="bbhcshhead">BBH Custom Schema - Documentation</h1>
                 <p>BBH Custom Schema allows you to insert your custom schema markup into any WordPress post or page to help search engines understand your content better.</p>
             </div>
         </div>
+
+        <?php
+        // Show review notice after intro paragraph
+        bbhcuschma_output_review_notice();
+        ?>
+
         <div class="admin-bbhcshrow">
             <div class="col-bbhcsh-paragraph bbhcsh_common">
                 <h2>Steps to Use:</h2>
@@ -581,18 +621,13 @@ function bbhcuschma_custom_schema_documentation_page() {
                         I'm passionate about creating error-free, secure websites and achieving 100% client satisfaction.
                         Solving real-world problems is my passion.
                     </p>
-                    <br>
                     <div>
-                        <p>
-                            If you found this plugin helpful, you can support the developer via <a href="https://www.buymeacoffee.com/jahidshah" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a>.
+                        <p class="bbh-bmc-btn" style="margin-top: 0;font-weight: 500;">
+                            If you found this plugin helpful, you can support the developer via - <br><a href="https://www.buymeacoffee.com/jahidshah" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a>
                         </p>
                     </div>
                 </div>
                 <div class="leftsidebar">
-                    <div>
-                        <h5 id="title">Watch Help Video</h5>
-                        <p><a href="" target="_blank" class="bbhcshyt-btn">Watch On YouTube</a></p>
-                    </div>
                     <div>
                         <h5 id="title">Our All Plugins</h5>
                         <ul>
@@ -604,9 +639,430 @@ function bbhcuschma_custom_schema_documentation_page() {
                             <li><a href="https://wordpress.org/plugins/bbh-custom-schema/" target="_blank" rel="noopener noreferrer">BBH Custom Schema</a></li>
                         </ul>
                     </div>
+                    <div>
+                        <h5 id="title">Watch Help Video</h5>
+                        <p><a href="" target="_blank" class="bbhcshyt-btn">Watch On YouTube</a></p>
+                    </div>
+                    <div>
+                        <h5 id="title">Review This Plugin</h5>
+                        <p style="margin-top: 0;">Thank you for using BBH Custom Schema. We would greatly appreciate it if you could share your experience and leave a review for us on WordPress.org. Your review inspires us to keep improving the plugin and delivering a better user experience.</p>
+                        <a href="https://wordpress.org/support/plugin/bbh-custom-schema/reviews/#new-post" target="_blank" rel="noopener noreferrer" style="margin-left: 10px;">Leave a Review</a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     <?php
 }
+
+// ============================================================================
+// USAGE TRACKING & REVIEW REQUEST SYSTEM
+// ============================================================================
+
+/**
+ * Check if current page is a plugin admin page.
+ * Uses both screen ID and URL fallback for reliability.
+ *
+ * @return bool True if on a plugin admin page.
+ */
+function bbhcuschma_is_plugin_page() {
+    // Check by screen ID first
+    $screen = get_current_screen();
+    if ( $screen ) {
+        $plugin_pages = array(
+            'toplevel_page_bbhcuschma-report',
+            'bbh-custom-schema_page_bbhcuschma-report',
+            'bbh-custom-schema_page_bbhcuschma-settings',
+            'bbh-custom-schema_page_bbhcuschma-documentation',
+        );
+
+        if ( in_array( $screen->id, $plugin_pages, true ) ) {
+            return true;
+        }
+    }
+
+    // Fallback: check URL query parameter
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+    if ( isset( $_GET['page'] ) ) {
+        $plugin_slugs = array(
+            'bbhcuschma-report',
+            'bbhcuschma-settings',
+            'bbhcuschma-documentation',
+        );
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        return in_array( sanitize_text_field( wp_unslash( $_GET['page'] ) ), $plugin_slugs, true );
+    }
+
+    return false;
+}
+
+/**
+ * Get the current usage count.
+ *
+ * @return int Number of times plugin has been used.
+ */
+function bbhcuschma_get_usage_count() {
+    return (int) get_option( 'bbhcuschma_usage_count', 0 );
+}
+
+/**
+ * Increment the usage count.
+ *
+ * @param int $post_id Post ID.
+ */
+function bbhcuschma_increment_usage( $post_id ) {
+    $schema = get_post_meta( $post_id, '_bbhcuschma_custom_schema', true );
+    if ( ! empty( $schema ) ) {
+        $count = bbhcuschma_get_usage_count();
+        update_option( 'bbhcuschma_usage_count', $count + 1, false );
+    }
+}
+
+/**
+ * Check if user has permanently dismissed the review request.
+ * Allows notice to show again after 30 days if dismissed.
+ *
+ * @return bool True if should stay dismissed.
+ */
+function bbhcuschma_is_review_dismissed() {
+    $dismissed = get_option( 'bbhcuschma_review_dismissed', false );
+    
+    // If not dismissed at all, return false
+    if ( empty( $dismissed ) || 'false' === $dismissed ) {
+        return false;
+    }
+
+    // If dismissed with timestamp, check if 30 days have passed
+    if ( is_numeric( $dismissed ) ) {
+        $days_since_dismiss = ( time() - (int) $dismissed ) / DAY_IN_SECONDS;
+        // Show again after 30 days
+        if ( $days_since_dismiss > 30 ) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Check if review notice should be shown.
+ * Shows after 3 days (with 1+ usages) or 7 days (with 7+ usages).
+ * For testing: Shows immediately when activated within last 5 minutes.
+ *
+ * @return bool True if notice should be shown.
+ */
+function bbhcuschma_should_show_review_notice() {
+    // Only show on plugin pages
+    if ( ! bbhcuschma_is_plugin_page() ) {
+        return false;
+    }
+
+    // Don't show if permanently dismissed
+    if ( bbhcuschma_is_review_dismissed() ) {
+        return false;
+    }
+
+    // Don't show if user clicked "Maybe Later" (snoozed)
+    $snoozed = get_user_meta( get_current_user_id(), 'bbhcuschma_review_snoozed', true );
+    if ( ! empty( $snoozed ) ) {
+        // Clear snooze after 24 hours so it shows again
+        $hours_since_snooze = ( time() - (int) $snoozed ) / HOUR_IN_SECONDS;
+        if ( $hours_since_snooze < 24 ) {
+            return false;
+        }
+        // Snooze expired, clear it
+        delete_user_meta( get_current_user_id(), 'bbhcuschma_review_snoozed' );
+    }
+
+    // Don't show to users who can't leave reviews
+    if ( ! current_user_can( 'manage_options' ) ) {
+        return false;
+    }
+
+    // Set activation time if not set
+    $activation_date = get_option( 'bbhcuschma_activated_time', 0 );
+    if ( ! $activation_date ) {
+        update_option( 'bbhcuschma_activated_time', time(), false );
+        return false;
+    }
+
+    $seconds_since_activation = time() - (int) $activation_date;
+    $days_since_activation = $seconds_since_activation / DAY_IN_SECONDS;
+    $usage_count = bbhcuschma_get_usage_count();
+
+    // FOR TESTING: Show immediately if activated within last 5 minutes (300 seconds)
+    // Change 300 to 0 for production (requires actual days to pass)
+    if ( $seconds_since_activation <= 300 ) {
+        return true;
+    }
+
+    // Show after 3 days if user has used schema at least once
+    if ( $days_since_activation >= 3 && $usage_count >= 3 ) {
+        return true;
+    }
+
+    // Show after 7 days if user has used schema at least 7 times
+    if ( $days_since_activation >= 7 && $usage_count >= 7 ) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Set the plugin activation time on activation.
+ * Runs on every activation (not just first time).
+ */
+function bbhcuschma_set_activation_time() {
+    // Always update activation time
+    update_option( 'bbhcuschma_activated_time', time(), false );
+    
+    // Always set redirect flag
+    update_option( 'bbhcuschma_do_activation_redirect', true, false );
+    
+    // Always reset welcome message flag
+    update_option( 'bbhcuschma_show_welcome', true, false );
+    
+    // Reset review dismissed so it can show again
+    delete_option( 'bbhcuschma_review_dismissed' );
+
+    // Clear welcome dismissed user meta for current user
+    $user_id = get_current_user_id();
+    if ( $user_id ) {
+        delete_user_meta( $user_id, 'bbhcuschma_welcome_dismissed' );
+    }
+}
+register_activation_hook( __FILE__, 'bbhcuschma_set_activation_time' );
+
+/**
+ * Redirect to plugin dashboard after activation.
+ */
+function bbhcuschma_activation_redirect() {
+    // Check if redirect flag is set
+    if ( ! get_option( 'bbhcuschma_do_activation_redirect', false ) ) {
+        return;
+    }
+
+    // Delete the flag so it only redirects once
+    delete_option( 'bbhcuschma_do_activation_redirect' );
+
+    // Only redirect on plugin activation, not on all admin pages
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+    if ( isset( $_GET['activate-multi'] ) ) {
+        return;
+    }
+
+    // Set welcome message flag
+    update_option( 'bbhcuschma_show_welcome', true, false );
+
+    // Redirect to the plugin dashboard (report page)
+    wp_safe_redirect( admin_url( 'admin.php?page=bbhcuschma-report' ) );
+    exit;
+}
+add_action( 'admin_init', 'bbhcuschma_activation_redirect' );
+
+/**
+ * Show welcome notice after first activation.
+ * Shows at the very top of admin pages using admin_notices hook.
+ */
+function bbhcuschma_welcome_notice() {
+    // Check if welcome message should be shown
+    if ( ! get_option( 'bbhcuschma_show_welcome', false ) ) {
+        return;
+    }
+
+    // Check if already dismissed for this user
+    $dismissed = get_user_meta( get_current_user_id(), 'bbhcuschma_welcome_dismissed', true );
+    if ( ! empty( $dismissed ) ) {
+        return;
+    }
+
+    $dismiss_url = wp_nonce_url( add_query_arg( 'bbhcuschma_dismiss_welcome', '1', admin_url() ), 'bbhcuschma_dismiss_welcome' );
+    ?>
+    <div class="notice notice-success bbhcuschma-schema-welcome-notice" style="border-left-color: #00a32a; position: relative;">
+        <p style="margin: 0 0 10px 0; font-size: 14px;">
+            <strong><?php esc_html_e( 'Welcome to BBH Custom Schema!', 'bbh-custom-schema' ); ?></strong>
+        </p>
+        <p style="margin: 0 0 15px 0; font-size: 13px; color: #3c434a;">
+            <?php
+            printf(
+                '%s <a href="%s">%s</a> %s <a href="%s">%s</a>.',
+                esc_html__( 'Thank you for installing BBH Custom Schema. To get started, simply add your custom JSON-LD schema to any post or page. Check out the', 'bbh-custom-schema' ),
+                esc_url( admin_url( 'admin.php?page=bbhcuschma-settings' ) ),
+                esc_html__( 'Settings', 'bbh-custom-schema' ),
+                esc_html__( 'page to configure post types, or visit the', 'bbh-custom-schema' ),
+                esc_url( admin_url( 'admin.php?page=bbhcuschma-documentation' ) ),
+                esc_html__( 'Documentation', 'bbh-custom-schema' )
+            );
+            ?>
+        </p>
+        <p style="margin: 0;">
+            <a href="<?php echo esc_url( $dismiss_url ); ?>" class="button button-primary">
+                <?php esc_html_e( 'Get Started', 'bbh-custom-schema' ); ?>
+            </a>
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=bbhcuschma-documentation' ) ); ?>" class="button" style="margin-left: 8px;">
+                <?php esc_html_e( 'View Documentation', 'bbh-custom-schema' ); ?>
+            </a>
+            <a href="<?php echo esc_url( $dismiss_url ); ?>" class="bbh-welcome-dismiss" style="margin-left: 15px; color: #72777c; text-decoration: none; font-size: 12px;">
+                <?php esc_html_e( 'Dismiss', 'bbh-custom-schema' ); ?>
+            </a>
+        </p>
+    </div>
+    <?php
+}
+add_action( 'admin_notices', 'bbhcuschma_welcome_notice' );
+
+/**
+ * Handle welcome notice dismissal.
+ */
+function bbhcuschma_handle_welcome_dismiss() {
+    if ( ! isset( $_GET['bbhcuschma_dismiss_welcome'] ) ) {
+        return;
+    }
+
+    if ( ! current_user_can( 'manage_options' ) ) {
+        return;
+    }
+
+    if ( ! check_admin_referer( 'bbhcuschma_dismiss_welcome' ) ) {
+        return;
+    }
+
+    // Delete the welcome flag
+    delete_option( 'bbhcuschma_show_welcome' );
+
+    // Mark as dismissed for this user
+    update_user_meta( get_current_user_id(), 'bbhcuschma_welcome_dismissed', time() );
+
+    // Redirect back to the same page without the query args
+    $redirect_url = remove_query_arg( array( 'bbhcuschma_dismiss_welcome', '_wpnonce' ), wp_get_referer() );
+    wp_safe_redirect( $redirect_url );
+    exit;
+}
+add_action( 'admin_init', 'bbhcuschma_handle_welcome_dismiss' );
+
+/**
+ * Track usage when schema is saved to a post.
+ *
+ * @param int $post_id Post ID.
+ */
+function bbhcuschma_track_usage_on_save( $post_id ) {
+    // Don't count autosaves
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+        return;
+    }
+
+    // Don't count revisions
+    if ( wp_is_post_revision( $post_id ) ) {
+        return;
+    }
+
+    // Check if this post type is enabled for schema
+    $post = get_post( $post_id );
+    if ( ! $post ) {
+        return;
+    }
+
+    $enabled_types = bbhcuschma_get_enabled_post_types();
+    if ( ! in_array( $post->post_type, $enabled_types, true ) ) {
+        return;
+    }
+
+    // Check if schema is being saved
+    // phpcs:ignore WordPress.Security.NonceVerification.Missing
+    if ( isset( $_POST['bbhcuschma_custom_schema'] ) ) {
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        $schema = sanitize_text_field( wp_unslash( $_POST['bbhcuschma_custom_schema'] ) );
+        if ( ! empty( $schema ) ) {
+            $count = bbhcuschma_get_usage_count();
+            update_option( 'bbhcuschma_usage_count', $count + 1, false );
+        }
+    }
+}
+add_action( 'save_post', 'bbhcuschma_track_usage_on_save' );
+
+/**
+ * Output the review request notice HTML.
+ * Shows inline after intro paragraphs on plugin pages.
+ */
+function bbhcuschma_output_review_notice() {
+    // Check if notice should be shown
+    if ( ! bbhcuschma_should_show_review_notice() ) {
+        return;
+    }
+
+    $review_url = 'https://wordpress.org/support/plugin/bbh-custom-schema/reviews/#new-post';
+    $dismiss_url = wp_nonce_url( admin_url( '?bbhcuschma_dismiss_review=1' ), 'bbhcuschma_dismiss_review' );
+    $dismiss_permanent_url = wp_nonce_url( admin_url( '?bbhcuschma_dismiss_permanent=1' ), 'bbhcuschma_dismiss_permanent' );
+    ?>
+    <div class="notice notice-info bbhcuschma-schema-review-notice" style="border-left-color: #0073aa; margin: 15px 0;">
+        <p style="margin: 0 0 12px 0; font-size: 14px;">
+            <strong><?php esc_html_e( 'Enjoying BBH Custom Schema?', 'bbh-custom-schema' ); ?></strong>
+        </p>
+        <p style="margin: 0 0 15px 0; font-size: 13px; color: #3c434a;">
+            <?php
+$text = __( 'Thank you for using BBH Custom Schema. If the plugin has been helpful for you, we would truly appreciate it if you could take a moment to share your experience by leaving a review on WordPress.org. Your feedback helps us continue improving the plugin and delivering a better experience for the community.', 'bbh-custom-schema' );
+
+printf(
+    esc_html( $text ),
+    absint( bbhcuschma_get_usage_count() )
+);
+?>
+        </p>
+        <p style="margin: 0;">
+            <a href="<?php echo esc_url( $review_url ); ?>" target="_blank" rel="noopener noreferrer" class="button button-primary" style="margin-right: 8px;">
+                <?php esc_html_e( 'Yes', 'bbh-custom-schema' ); ?>
+            </a>
+            <a href="<?php echo esc_url( $dismiss_url ); ?>" class="button" style="margin-right: 8px;">
+                <?php esc_html_e( 'Maybe Later', 'bbh-custom-schema' ); ?>
+            </a>
+            <a href="<?php echo esc_url( $dismiss_permanent_url ); ?>" style="color: #72777c; text-decoration: none; font-size: 12px; line-height: 28px;">
+                <?php esc_html_e( 'Do not show again', 'bbh-custom-schema' ); ?>
+            </a>
+        </p>
+    </div>
+    <?php
+}
+
+/**
+ * Handle review notice dismissal (Maybe Later).
+ */
+function bbhcuschma_handle_dismiss() {
+    // Handle "Maybe Later" - temporarily dismiss until next page visit
+    if ( isset( $_GET['bbhcuschma_dismiss_review'] ) && '1' === $_GET['bbhcuschma_dismiss_review'] ) {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        if ( ! check_admin_referer( 'bbhcuschma_dismiss_review' ) ) {
+            return;
+        }
+
+        // Set user meta to temporarily hide the notice
+        update_user_meta( get_current_user_id(), 'bbhcuschma_review_snoozed', time() );
+
+        wp_safe_redirect( remove_query_arg( array( 'bbhcuschma_dismiss_review', '_wpnonce' ), wp_get_referer() ) );
+        exit;
+    }
+
+    // Handle "Do not show again" - permanently dismisses
+    if ( isset( $_GET['bbhcuschma_dismiss_permanent'] ) && '1' === $_GET['bbhcuschma_dismiss_permanent'] ) {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        if ( ! check_admin_referer( 'bbhcuschma_dismiss_permanent' ) ) {
+            return;
+        }
+
+        // Save timestamp so notice can show again after 30 days
+        update_option( 'bbhcuschma_review_dismissed', time(), false );
+
+        // Also clear the snoozed meta
+        delete_user_meta( get_current_user_id(), 'bbhcuschma_review_snoozed' );
+
+        wp_safe_redirect( remove_query_arg( array( 'bbhcuschma_dismiss_permanent', '_wpnonce' ), wp_get_referer() ) );
+        exit;
+    }
+}
+add_action( 'admin_init', 'bbhcuschma_handle_dismiss' );

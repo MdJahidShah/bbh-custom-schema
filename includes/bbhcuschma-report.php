@@ -55,13 +55,19 @@ function bbhcuschma_report_page_callback() {
     }
 
     // Pagination for pending posts
-    $per_page = 10;
+    $per_page = 15;
     $total_pending = count($pending);
     $offset = ($paged - 1) * $per_page;
     $pending_page = array_slice($pending, $offset, $per_page);
 
     // Report Page Title & Intro
-    echo '<div class="wrap reportpagehead"><h1>Content Schema Report</h1><p>This report shows the status of content schema implementation across your posts and pages.</p></div>';
+    echo '<div class="wrap"></div>';
+    echo '<div class="reportpagehead"><h1>Content Schema Report</h1><p>This report shows the status of content schema implementation across your posts and pages.</p></div>';
+
+    // Show review notice after intro paragraph
+    if ( function_exists( 'bbhcuschma_output_review_notice' ) ) {
+        bbhcuschma_output_review_notice();
+    }
 
     // Render Pending Table
     echo '<div class="ppwoshead"><h2>Posts/Pages Without Schema</h2></div>';

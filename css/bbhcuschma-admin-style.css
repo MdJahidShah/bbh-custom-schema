@@ -17,12 +17,18 @@ h1, h2, h3, h4, h5, h6 {
     font-size: larger;
 }
 .reportpagehead {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    margin: 0 5px;
-    width: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    margin: 0 1px;
     text-align: center;
     color: #fff;
     padding: 20px;
+}
+th.enable-setting-text {
+    background: linear-gradient(135deg, #2c3338 0%, #50575e 100%) !important;
+    color: #fff !important;
+}
+th.enable-setting-text p.description{
+    color: #fff !important;
 }
 .reportpagehead h1 {
     font-size: 1.9rem;
@@ -116,13 +122,60 @@ h1.bbhcshhead {
     border: 1px solid #ccc;
     border-radius: 10px;
 }
+.notice.notice-error:has(a[href*="silentguard-scanner"]) {display: none !important;}
+.notice, div.error, div.updated { margin: 5px 1px 3px !important;}
+.wrap.bbhsettingpagewrapper {
+    margin: 10px 2px 0 2px;
+}
+.form-table td {padding: 15px 0px !important;}
+.widefat thead tr th {
+    font-weight: 700;
+    padding: 15px 5px;
+}
 .buyme-author-img:hover{border:1px solid #732b81}
+p.bbh-bmc-btn a {
+    text-decoration: none;
+    color: #000;
+}
+p.bbh-bmc-btn a {
+    /* Layout & Sizing */
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 25px;
+    
+    /* Colors */
+    background-color: #FFDD00; /* The signature yellow */
+    color: #000000;
+    
+    /* Border & Shape */
+    border: none;
+    border-radius: 12px; /* Smooth rounded corners */
+    
+    /* Typography */
+    text-decoration: none;
+    font-family: 'Cookie', cursive;
+    font-size: 20px;
+    font-weight: normal;
+    
+    /* Interaction */
+    transition: 0.3s;
+    cursor: pointer;
+    margin-top: 5px;
+  }
 
+  p.bbh-bmc-btn a::before {
+    content: '🥛';
+    margin-right: 10px;
+
+  }
+  p.bbh-bmc-btn a:hover {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
 /*---------------------------------------------------
             Report Page CSS Start
 ---------------------------------------------------*/
 .wrap.reportpagehead {
-    background: #ffffff;
     margin: 5px 2px !important;
     padding: 5px;
 }
@@ -133,24 +186,25 @@ h1.bbhcshhead {
     font-size: 1rem;
     margin:5px 0 15px 0;
 }
-.ppwoshead, .ppwshead {
-    background: #fff;
+.ppwshead, .ppwoshead {
     padding: 1px 10px;
-    margin: 10px 2px 0 2px;
+    margin: 10px 0px 0 0px;
+}
+.ppwoshead {
+    background-color: rgb(112, 4, 4);
 }
 .ppwoshead h2 {
     color: #fff;
-    background-color: rgb(112, 4, 4);
-    width: fit-content;
     padding: 8px 5px;
-    border-radius: 5px;
+    border-bottom: none !important;
+}
+.ppwshead {
+    background-color: rgb(4, 112, 4);
 }
 .ppwshead h2 {
     color: #fff;
-    background-color: rgb(4, 112, 4);
-    width: fit-content;
     padding: 8px 5px;
-    border-radius: 5px;
+    border-bottom: none !important;
 }
 .tablenav.table-flex {
     display: flex;
@@ -210,6 +264,14 @@ h5#title {
 span.dashicons.dashicons-yes {
     color: rgb(4, 112, 4);
     font-weight: 700;
+}
+table.widefat tbody tr td {
+    border-bottom: 0.1px solid #ccc;
+    align-items: center;
+    align-content: center;
+}
+table.widefat tbody tr td input {
+    margin-left: 8px;
 }
 /*---------------------------------------------------
             Report Page CSS End
