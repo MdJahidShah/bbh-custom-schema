@@ -3,7 +3,7 @@
  * Plugin Name: BBH Custom Schema – Add Custom JSON-LD to Your Website
  * Plugin URI: https://wordpress.org/plugins/bbh-custom-schema/
  * Description: Add custom JSON-LD schema to any post or page and override schema from other SEO plugins to control your structured data output.
- * Version: 1.2.1
+ * Version: 1.2.3
  * Requires at least: 5.2
  * Requires PHP: 7.2
  * Author: Jahid Shah
@@ -23,6 +23,12 @@ $bbhcuschma_report_file = plugin_dir_path(__FILE__) . 'includes/bbhcuschma-repor
 
 if (file_exists($bbhcuschma_report_file)) {
     require_once $bbhcuschma_report_file;
+}
+
+$bbhcuschma_seo_file = plugin_dir_path(__FILE__) . 'includes/bbhcuschma-schema-seo.php';
+
+if (file_exists($bbhcuschma_seo_file)) {
+    require_once $bbhcuschma_seo_file;
 }
 
 // ============================================================================
@@ -341,7 +347,15 @@ add_action('wp_enqueue_scripts', 'bbhcuschma_enqueue_style');
  */
 function bbhcuschma_enqueue_admin_script($hook) {
     if (in_array($hook, ['post.php', 'post-new.php'], true)) {
-        wp_enqueue_script('bbhcuschma-plugin', plugins_url('js/bbhcuschma-plugin.js', __FILE__), array('jquery'), '1.0.0', true);
+        wp_enqueue_script('bbhcuschma-plugin', plugins_url('js/bbhcuschma-plugin.js', __FILE__), array('jquery'), '1.0.1', true);
+        wp_localize_script(
+            'bbhcuschma-plugin',
+            'bbhcuschmaValidate',
+            array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('bbhcuschma_validate_json_nonce'),
+            )
+        );
     }
 }
 add_action('admin_enqueue_scripts', 'bbhcuschma_enqueue_admin_script');
@@ -411,11 +425,26 @@ function bbhcuschma_render_meta_box($post) {
     // Retrieve existing schema value for this post
     $schema = get_post_meta($post->ID, '_bbhcuschma_custom_schema', true);
     
-    // Output the collapsible schema input box
+    // Output the collapsible schema input box with validate button and result container
     echo '<div id="bbhcuschma-schema-container">';
     echo '<strong id="bbhcuschma-schema-toggle" style="cursor:pointer; display:inline-block; margin-bottom:8px; color:#0073aa;">&#10148; ' . esc_html__('Custom Schema (Click to Expand)', 'bbh-custom-schema') . '</strong>';
     echo '<div id="bbhcuschma-schema-box" style="display:none; margin-top:10px;">';
+    echo '<p class="impnote">'
+    . wp_kses(
+        __( 'Enter your custom JSON-LD schema here. Do not include <strong>&lt;script type="application/ld+json"&gt;</strong> or <strong>&lt;/script&gt;</strong> tags. Only add valid JSON content.', 'bbh-custom-schema' ),
+        array(
+            'strong' => array()
+        )
+    )
+    . '</p>';
     echo '<textarea id="bbhcuschma_custom_schema" name="bbhcuschma_custom_schema" rows="10" style="width:100%;">' . esc_textarea($schema) . '</textarea>';
+    echo '<div class="bbhcuschma-validate-row" style="margin-top:8px; display:flex; align-items:center; flex-wrap:wrap; gap:10px;">';
+    echo '<button type="button" id="bbhcuschma_validate_btn" class="button">' . esc_html__('Validity Check', 'bbh-custom-schema') . '</button>';
+    echo '<button type="button" id="bbhcuschma_combine_btn" class="button">' . esc_html__('Combine Schemas', 'bbh-custom-schema') . '</button>';
+    echo '<a href="https://jahidshah.com/how-to-optimize-schema-markup/#advsotips" target="_blank" class="button button-secondary" style="text-decoration:none;">' . esc_html__('Schema Optimization Guide ↗', 'bbh-custom-schema') . '</a>';
+    echo '<span id="bbhcuschma_validate_result" style="display:none; font-size:13px; line-height:1.4;"></span>';
+    echo '</div>';
+    echo '<div id="bbhcuschma_combine_result" style="display:none; margin-top:12px;"></div>';
     echo '</div></div>';
 }
 
@@ -559,7 +588,8 @@ function bbhcuschma_custom_schema_documentation_page() {
                     <li>Go to <strong>Posts</strong> or <strong>Pages</strong> and create or edit a post/page.</li>
                     <li>Scroll down to find the <strong>Custom Schema (Click to Expand)</strong> section.</li>
                     <li>Click the arrow to expand the schema input box.</li>
-                    <li>Paste your schema code in the box. Make sure it's properly formatted with <code>&lt;script type="application/ld+json"&gt;...&lt;/script&gt;</code>.</li>
+                    <li>Paste your JSON-LD schema in the box. Only include valid JSON — no need to add <code>&lt;script type="application/ld+json"&gt;</code> or <code>&lt;/script&gt;</code> tags.</li>
+                    <li>When you are using multiple schemas, click the <strong>Combine Schemas</strong> button to merge any existing schemas.</li>
                     <li>Click the <strong>Publish</strong> or <strong>Update</strong> button to save your changes.</li>
                 </ol>
 
@@ -582,7 +612,7 @@ function bbhcuschma_custom_schema_documentation_page() {
                             "author": {
                                 "@type": "Organization",
                                 "name": "BBH",
-                                "url": "author website URL",
+                                "url": "author website URL"
                             },  
                             "publisher": {
                                 "@type": "Organization",
@@ -1066,3 +1096,62 @@ function bbhcuschma_handle_dismiss() {
     }
 }
 add_action( 'admin_init', 'bbhcuschma_handle_dismiss' );
+
+// ============================================================================
+// AJAX JSON VALIDATION HANDLER
+// ============================================================================
+
+/**
+ * AJAX handler for validating JSON-LD schema.
+ *
+ * @since 1.2.2
+ */
+function bbhcuschma_ajax_validate_json() {
+    check_ajax_referer( 'bbhcuschma_validate_json_nonce', 'nonce' );
+
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( array( 'message' => __( 'Permission denied.', 'bbh-custom-schema' ) ) );
+    }
+
+    // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+    $json = isset( $_POST['json'] ) ? wp_unslash( $_POST['json'] ) : '';
+    
+    if ( empty( $json ) ) {
+        wp_send_json_error( array( 'message' => __( 'No JSON provided.', 'bbh-custom-schema' ) ) );
+    }
+
+    json_decode( $json );
+    $error = json_last_error();
+
+    if ( JSON_ERROR_NONE === $error ) {
+        wp_send_json_success( array( 'message' => __( 'Valid JSON', 'bbh-custom-schema' ) ) );
+    } else {
+        $error_msg = json_last_error_msg();
+        /* translators: %s: JSON error message */
+        wp_send_json_error( array( 'message' => sprintf( __( 'Invalid JSON: %s', 'bbh-custom-schema' ), $error_msg ) ) );
+    }
+}
+add_action( 'wp_ajax_bbhcuschma_validate_json', 'bbhcuschma_ajax_validate_json' );
+
+/**
+ * AJAX handler for combining multiple JSON-LD schemas.
+ *
+ * @since 1.3.5
+ */
+function bbhcuschma_ajax_combine_schema() {
+    check_ajax_referer( 'bbhcuschma_validate_json_nonce', 'nonce' );
+
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( array( 'message' => __( 'Permission denied.', 'bbh-custom-schema' ) ) );
+    }
+
+    $json = isset( $_POST['json'] ) ? sanitize_textarea_field( wp_unslash( $_POST['json'] ) ) : '';
+
+    if ( empty( $json ) ) {
+        wp_send_json_error( array( 'message' => __( 'No schema provided.', 'bbh-custom-schema' ) ) );
+    }
+
+    $result = bbhcuschma_combine_schema( $json );
+    wp_send_json_success( $result );
+}
+add_action( 'wp_ajax_bbhcuschma_combine_schema', 'bbhcuschma_ajax_combine_schema' );
