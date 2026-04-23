@@ -218,10 +218,12 @@ p.bbh-bmc-btn a {
     padding: 10px 0;
 }
 a.page-numbers, span.page-numbers.current {
-    padding: 5px;
+    padding: 5px 10px;
     color: #000;
     text-decoration: none;
-    font-size: 1rem;
+    font-size: 13px;
+    border: 1px solid #c3c4c7;
+    border-radius: 5px;
 }
 span.page-numbers.current{
     background-color: #c3c4c7;

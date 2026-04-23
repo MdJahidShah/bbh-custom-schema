@@ -3,7 +3,7 @@
  * Plugin Name: BBH Custom Schema – Add Custom JSON-LD to Your Website
  * Plugin URI: https://wordpress.org/plugins/bbh-custom-schema/
  * Description: Add custom JSON-LD schema to any post or page and override schema from other SEO plugins to control your structured data output.
- * Version: 1.2.3
+ * Version: 1.3.0
  * Requires at least: 5.2
  * Requires PHP: 7.2
  * Author: Md Jahid Shah
@@ -14,6 +14,217 @@
  */
 
 if (!defined('ABSPATH')) exit;
+
+// ============================================================================
+// ENQUEUE ADMIN STYLES
+// ============================================================================
+
+/**
+ * Enqueue admin stylesheets for BBH Custom Schema.
+ */
+function bbhcuschma_enqueue_admin_style() {
+    $css_path = plugin_dir_path(__FILE__) . 'css/bbhcuschma-admin-style.css';
+    $version = file_exists($css_path) ? filemtime($css_path) : '1.0';
+
+    wp_register_style('bbhcuschma-admin-style', plugins_url('css/bbhcuschma-admin-style.css', __FILE__), array(), $version);
+    wp_enqueue_style('bbhcuschma-admin-style');
+}
+add_action('admin_enqueue_scripts', 'bbhcuschma_enqueue_admin_style');
+
+// ============================================================================
+// ENQUEUE FRONTEND STYLES
+// ============================================================================
+
+/**
+ * Enqueue frontend stylesheets for BBH Custom Schema.
+ */
+function bbhcuschma_enqueue_style() {
+    $version = file_exists(plugin_dir_path(__FILE__) . 'css/bbhcuschma-style.css') ? filemtime(plugin_dir_path(__FILE__) . 'css/bbhcuschma-style.css') : '1.0';
+    wp_register_style('bbhcuschma-style', plugins_url('css/bbhcuschma-style.css', __FILE__), array(), $version);
+    wp_enqueue_style('bbhcuschma-style');
+}
+add_action('wp_enqueue_scripts', 'bbhcuschma_enqueue_style');
+
+// ============================================================================
+// ENQUEUE ADMIN SCRIPTS
+// ============================================================================
+
+/**
+ * Enqueue JavaScript files for the admin area.
+ * Only loads on post edit screens.
+ *
+ * @param string $hook The current admin page hook.
+ */
+function bbhcuschma_enqueue_admin_script($hook) {
+    if (in_array($hook, ['post.php', 'post-new.php'], true)) {
+        wp_enqueue_script('bbhcuschma-plugin', plugins_url('js/bbhcuschma-plugin.js', __FILE__), array('jquery'), '1.0.1', true);
+        wp_localize_script(
+            'bbhcuschma-plugin',
+            'bbhcuschmaValidate',
+            array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('bbhcuschma_validate_json_nonce'),
+            )
+        );
+    }
+}
+add_action('admin_enqueue_scripts', 'bbhcuschma_enqueue_admin_script');
+
+add_action('admin_enqueue_scripts', 'bbhcuschma_enqueue_review_script');
+
+function bbhcuschma_enqueue_review_script($hook) {
+
+    wp_enqueue_script(
+        'bbhcuschma-schema-review',
+        plugin_dir_url(__FILE__) . 'js/bbhcuschma-schema-review.js',
+        ['jquery'],
+        '1.0',
+        true
+    );
+
+    wp_localize_script(
+        'bbhcuschma-schema-review',
+        'bbhcuschmaSchemaReview',
+        [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce'   => wp_create_nonce('bbhcuschma_review_nonce')
+        ]
+    );
+}
+
+// ============================================================================
+// QUICK START ONBOARDING
+// ============================================================================
+function bbhcuschma_quickstart_page() {
+    if (!current_user_can('manage_options')) {
+        wp_die('Access denied');
+    }
+    
+    $enabled_types = bbhcuschma_get_enabled_post_types();
+    if (empty($enabled_types)) {
+        $enabled_types = array('post', 'page');
+    }
+    
+    // Get recent posts/pages - no meta query for performance
+    $posts = get_posts(array(
+        'post_type' => $enabled_types,
+        'post_status' => 'publish',
+        'numberposts' => 3,
+        'orderby' => 'modified',
+        'order' => 'DESC'
+    ));
+    
+    if (empty($posts)) {
+        $posts = get_posts(array(
+            'post_type' => array('post', 'page'),
+            'post_status' => 'publish',
+            'numberposts' => 1
+        ));
+    }
+    
+    $sample_post = !empty($posts) ? $posts[0] : null;
+    $edit_url = $sample_post ? esc_url( get_edit_post_link($sample_post->ID) ) : esc_url( admin_url('post-new.php') );
+    
+    ?>
+    <div style="max-width:700px; margin:40px auto; padding:30px; background:#fff; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+        <h1 style="margin:0 0 10px 0; font-size:28px; color:#1d2327;">Quick Start: Add Schema in 3 Steps</h1>
+        
+        <div style="margin:30px 0;">
+            <div style="display:flex; align-items:center; gap:15px; padding:15px; background:#f5f5f5; border-radius:4px; margin-bottom:15px;">
+                <span style="font-size:24px; font-weight:bold; color:#fff; background:#00a32a; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;">1</span>
+                <div>
+                    <strong>Click Edit on a post below</strong>
+                    <p style="margin:5px 0 0 0; font-size:13px; color:#646970;">We've found a post that needs schema</p>
+                </div>
+            </div>
+            
+            <?php if ($sample_post): ?>
+            <div style="padding:15px; background:#eef6ff; border-left:3px solid #0073aa; border-radius:4px; margin-bottom:15px;">
+                <strong><?php echo esc_html($sample_post->post_title); ?></strong>
+                <p style="margin:5px 0 0 0; font-size:13px; color:#646970;">Post Type: <?php echo esc_html($sample_post->post_type); ?></p>
+            </div>
+            <?php endif; ?>
+            
+            <a href="<?php echo esc_url($edit_url); ?>" class="button button-primary" style="font-size:16px; padding:12px 24px;">Edit This Post →</a>
+            
+            <div style="display:flex; align-items:center; gap:15px; padding:15px; background:#f5f5f5; border-radius:4px; margin-top:25px; margin-bottom:15px;">
+                <span style="font-size:24px; font-weight:bold; color:#fff; background:#00a32a; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;">2</span>
+                <div>
+                    <strong>Scroll down to BBH Custom Schema</strong>
+                    <p style="margin:5px 0 0 0; font-size:13px; color:#646970;">Click to expand the schema box</p>
+                </div>
+            </div>
+            
+            <div style="display:flex; align-items:center; gap:15px; padding:15px; background:#f5f5f5; border-radius:4px; margin-bottom:15px;">
+                <span style="font-size:24px; font-weight:bold; color:#fff; background:#00a32a; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;">3</span>
+                <div>
+                    <strong>Click Publish/Update</strong>
+                    <p style="margin:5px 0 0 0; font-size:13px; color:#646970;">Schema will be saved automatically with the post</p>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin:30px 0; padding:15px; background:#eeffe5; border-left:3px solid #00a32a; border-radius:4px;">
+            <strong style="color:#00a32a;">✓ Works with Google Rich Results Test</strong><br>
+            <strong style="color:#00a32a;">✓ No conflict with SEO plugins</strong><br>
+            <strong style="color:#00a32a;">✓ Lightweight JSON-LD output</strong>
+        </div>
+        
+        <p style="font-size:13px; color:#646970; margin:20px 0 0 0;">
+            <a href="<?php echo esc_url( admin_url('admin.php?page=bbhcuschma-report') ); ?>">
+                ← Back to Report
+            </a>
+        </p>
+    </div>
+    <?php
+}
+
+function bbhcuschma_save_draft() {
+    check_ajax_referer('bbhcuschma_quickstart_nonce', 'nonce');
+    
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error();
+    }
+
+    $schema = isset($_POST['schema']) ? wp_kses_post( wp_unslash($_POST['schema']) ) : '';
+    $type = isset($_POST['type']) ? sanitize_text_field( wp_unslash($_POST['type']) ) : '';
+    
+    if (empty($schema)) {
+        wp_send_json_error();
+    }
+    
+    set_transient('bbhcuschma_draft_schema_' . get_current_user_id(), $schema, HOUR_IN_SECONDS);
+    update_option('bbhcuschma_quickstart_completed', true);
+    
+    wp_send_json_success();
+}
+add_action('wp_ajax_bbhcuschma_save_draft', 'bbhcuschma_save_draft');
+
+function bbhcuschma_maybe_redirect_to_editor() {
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+    if (isset($_GET['page']) && $_GET['page'] === 'bbh-schema-quickstart') {
+        return;
+    }
+}
+add_action('admin_init', 'bbhcuschma_maybe_redirect_to_editor');
+
+function bbhcuschma_apply_draft_on_save($post_id) {
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+        return $post_id;
+    }
+    
+    if (!current_user_can('edit_post', $post_id)) {
+        return $post_id;
+    }
+    
+    $draft = get_transient('bbhcuschma_draft_schema_' . get_current_user_id());
+    
+    if (!empty($draft)) {
+        update_post_meta($post_id, '_bbhcuschma_custom_schema', $draft);
+        delete_transient('bbhcuschma_draft_schema_' . get_current_user_id());
+    }
+}
+add_action('save_post', 'bbhcuschma_apply_draft_on_save', 20);
 
 // ============================================================================
 // INCLUDE REPORT FILE
@@ -100,7 +311,17 @@ function bbhcuschma_add_admin_menu() {
         'bbhcuschma_settings_page_callback'
     );
 
-    // Submenu 3: Documentation
+    // Submenu 3: Quick Start Guide
+    add_submenu_page(
+        'bbhcuschma-report',
+        'Quick Start Guide',
+        'Quick Start',
+        'manage_options',
+        'bbh-schema-quick-start',
+        'bbhcuschma_quickstart_page'
+    );
+
+    // Submenu 4: Documentation
     add_submenu_page(
         'bbhcuschma-report',
         'Documentation',
@@ -111,7 +332,7 @@ function bbhcuschma_add_admin_menu() {
     );
 
 }
-add_action('admin_menu', 'bbhcuschma_add_admin_menu');
+add_action('admin_menu', 'bbhcuschma_add_admin_menu', 10);
 
 // ============================================================================
 // SETTINGS PAGE
@@ -306,84 +527,6 @@ function bbhcuschma_settings_page_callback() {
 }
 
 // ============================================================================
-// ENQUEUE ADMIN STYLES
-// ============================================================================
-
-/**
- * Enqueue admin stylesheets for BBH Custom Schema.
- */
-function bbhcuschma_enqueue_admin_style() {
-    $css_path = plugin_dir_path(__FILE__) . 'css/bbhcuschma-admin-style.css';
-    $version = file_exists($css_path) ? filemtime($css_path) : '1.0';
-
-    wp_register_style('bbhcuschma-admin-style', plugins_url('css/bbhcuschma-admin-style.css', __FILE__), array(), $version);
-    wp_enqueue_style('bbhcuschma-admin-style');
-}
-add_action('admin_enqueue_scripts', 'bbhcuschma_enqueue_admin_style');
-
-// ============================================================================
-// ENQUEUE FRONTEND STYLES
-// ============================================================================
-
-/**
- * Enqueue frontend stylesheets for BBH Custom Schema.
- */
-function bbhcuschma_enqueue_style() {
-    $version = file_exists(plugin_dir_path(__FILE__) . 'css/bbhcuschma-style.css') ? filemtime(plugin_dir_path(__FILE__) . 'css/bbhcuschma-style.css') : '1.0';
-    wp_register_style('bbhcuschma-style', plugins_url('css/bbhcuschma-style.css', __FILE__), array(), $version);
-    wp_enqueue_style('bbhcuschma-style');
-}
-add_action('wp_enqueue_scripts', 'bbhcuschma_enqueue_style');
-
-// ============================================================================
-// ENQUEUE ADMIN SCRIPTS
-// ============================================================================
-
-/**
- * Enqueue JavaScript files for the admin area.
- * Only loads on post edit screens.
- *
- * @param string $hook The current admin page hook.
- */
-function bbhcuschma_enqueue_admin_script($hook) {
-    if (in_array($hook, ['post.php', 'post-new.php'], true)) {
-        wp_enqueue_script('bbhcuschma-plugin', plugins_url('js/bbhcuschma-plugin.js', __FILE__), array('jquery'), '1.0.1', true);
-        wp_localize_script(
-            'bbhcuschma-plugin',
-            'bbhcuschmaValidate',
-            array(
-                'ajaxUrl' => admin_url('admin-ajax.php'),
-                'nonce'   => wp_create_nonce('bbhcuschma_validate_json_nonce'),
-            )
-        );
-    }
-}
-add_action('admin_enqueue_scripts', 'bbhcuschma_enqueue_admin_script');
-
-add_action('admin_enqueue_scripts', 'bbhcuschma_enqueue_review_script');
-
-function bbhcuschma_enqueue_review_script($hook) {
-
-    wp_enqueue_script(
-        'bbhcuschma-schema-review',
-        plugin_dir_url(__FILE__) . 'js/bbhcuschma-schema-review.js',
-        ['jquery'],
-        '1.0',
-        true
-    );
-
-    wp_localize_script(
-        'bbhcuschma-schema-review',
-        'bbhcuschmaSchemaReview',
-        [
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce'   => wp_create_nonce('bbhcuschma_review_nonce')
-        ]
-    );
-}
-
-
-// ============================================================================
 // META BOX REGISTRATION
 // ============================================================================
 
@@ -438,13 +581,15 @@ function bbhcuschma_render_meta_box($post) {
     )
     . '</p>';
     echo '<textarea id="bbhcuschma_custom_schema" name="bbhcuschma_custom_schema" rows="10" style="width:100%;">' . esc_textarea($schema) . '</textarea>';
-    echo '<div class="bbhcuschma-validate-row" style="margin-top:8px; display:flex; align-items:center; flex-wrap:wrap; gap:10px;">';
-    echo '<button type="button" id="bbhcuschma_validate_btn" class="button">' . esc_html__('Validity Check', 'bbh-custom-schema') . '</button>';
-    echo '<button type="button" id="bbhcuschma_combine_btn" class="button">' . esc_html__('Combine Schemas', 'bbh-custom-schema') . '</button>';
-    echo '<a href="https://jahidshah.com/how-to-optimize-schema-markup/#advsotips" target="_blank" class="button button-secondary" style="text-decoration:none;">' . esc_html__('Schema Optimization Guide ↗', 'bbh-custom-schema') . '</a>';
-    echo '<span id="bbhcuschma_validate_result" style="display:none; font-size:13px; line-height:1.4;"></span>';
+    
+    echo '<div style="margin-top:12px; display:flex; align-items:center; flex-wrap:wrap; gap:10px;">';
+    echo '<button type="button" id="bbhcuschma_validate_btn" class="button button-secondary">' . esc_html__('Validity Check', 'bbh-custom-schema') . '</button>';
+    echo '<button type="button" id="bbhcuschma_combine_btn" class="button button-secondary">' . esc_html__('Combine Schemas', 'bbh-custom-schema') . '</button>';
+    echo '<a href="https://jahidshah.com/how-to-optimize-schema-markup/#advsotips" target="_blank" class="button button-secondary" style="text-decoration:none;">' . esc_html__('Guide ↗', 'bbh-custom-schema') . '</a>';
     echo '</div>';
+    echo '<div id="bbhcuschma_validate_result" style="display:none; padding:10px; font-size:13px;"></div>';
     echo '<div id="bbhcuschma_combine_result" style="display:none; margin-top:12px;"></div>';
+    
     echo '</div></div>';
 }
 
@@ -480,12 +625,25 @@ function bbhcuschma_save_schema_meta_box($post_id) {
 
     // Save the schema data
     if (isset($_POST['bbhcuschma_custom_schema'])) {
-        update_post_meta(
-            $post_id,
-            '_bbhcuschma_custom_schema',
-            wp_kses_post(wp_unslash($_POST['bbhcuschma_custom_schema']))
-        );
+        $schema = wp_kses_post(wp_unslash($_POST['bbhcuschma_custom_schema']));
+        if (!empty($schema)) {
+            update_post_meta(
+                $post_id,
+                '_bbhcuschma_custom_schema',
+                $schema
+            );
+            // Show success notice
+            add_action('admin_notices', 'bbhcuschma_schema_saved_notice');
+        }
     }
+}
+
+function bbhcuschma_schema_saved_notice() {
+    ?>
+    <div class="notice notice-success is-dismissible" style="border-left-color:#00a32a;">
+        <p><strong>✓ Schema saved!</strong> Your JSON-LD schema has been saved with this post/page. It will now appear in Google Rich Results.</p>
+    </div>
+    <?php
 }
 add_action('save_post', 'bbhcuschma_save_schema_meta_box');
 
@@ -886,7 +1044,7 @@ function bbhcuschma_activation_redirect() {
     update_option( 'bbhcuschma_show_welcome', true, false );
 
     // Redirect to the plugin dashboard (report page)
-    wp_safe_redirect( admin_url( 'admin.php?page=bbhcuschma-report' ) );
+    wp_safe_redirect( admin_url( 'admin.php?page=bbh-schema-quick-start' ) );
     exit;
 }
 add_action( 'admin_init', 'bbhcuschma_activation_redirect' );
@@ -1155,3 +1313,188 @@ function bbhcuschma_ajax_combine_schema() {
     wp_send_json_success( $result );
 }
 add_action( 'wp_ajax_bbhcuschma_combine_schema', 'bbhcuschma_ajax_combine_schema' );
+
+// ============================================================================
+// SCHEMA OPPORTUNITY NOTICE
+// ============================================================================
+
+/**
+ * Count posts/pages without schema.
+ *
+ * @return int Number of posts without schema.
+ */
+function bbhcuschma_count_posts_without_schema() {
+    global $wpdb;
+
+    $enabled_types = bbhcuschma_get_enabled_post_types();
+    if ( empty( $enabled_types ) ) {
+        $enabled_types = array( 'post', 'page' );
+    }
+
+    // Prevent SQL error
+    if ( empty( $enabled_types ) ) {
+        return 0;
+    }
+
+    // Create placeholders
+    $placeholders = implode( ', ', array_fill( 0, count( $enabled_types ), '%s' ) );
+
+    $query = "
+        SELECT COUNT(*) 
+        FROM {$wpdb->posts} p
+        WHERE p.post_type IN ($placeholders)
+        AND p.post_status = 'publish'
+        AND NOT EXISTS (
+            SELECT 1 FROM {$wpdb->postmeta} pm
+            WHERE pm.post_id = p.ID
+            AND pm.meta_key = %s
+            AND pm.meta_value != ''
+        )
+    ";
+
+    // Merge params
+    $params = array_merge( $enabled_types, array( '_bbhcuschma_custom_schema' ) );
+    
+    // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+    $count = $wpdb->get_var( $wpdb->prepare( $query, $params ) );
+
+    return (int) $count;
+}
+
+/**
+ * Check if schema opportunity notice should show.
+ *
+ * @return bool Whether to show the notice.
+ */
+function bbhcuschma_should_show_opportunity_notice() {
+    // Only show to users who can manage options
+    if ( ! current_user_can( 'manage_options' ) ) {
+        return false;
+    }
+
+    // Check if permanently dismissed
+    $dismissed = get_option( 'bbhcuschma_opportunity_dismissed', false );
+    if ( $dismissed ) {
+        return false;
+    }
+
+    // Check if temporarily hidden (remind later)
+    $remind_until = get_user_meta( get_current_user_id(), 'bbhcuschma_opportunity_remind', true );
+    if ( ! empty( $remind_until ) && time() < (int) $remind_until ) {
+        return false;
+    }
+
+    // Check transient for rate limiting (once per 24 hours)
+    $transient_key = 'bbhcuschma_opportunity_notice_' . get_current_user_id();
+    if ( get_transient( $transient_key ) ) {
+        return false;
+    }
+
+    // Check if any posts without schema exist
+    $count = bbhcuschma_count_posts_without_schema();
+    return $count > 0;
+}
+
+/**
+ * Display schema opportunity admin notice.
+ */
+function bbhcuschma_opportunity_notice() {
+    if ( ! bbhcuschma_should_show_opportunity_notice() ) {
+        return;
+    }
+
+    $count = bbhcuschma_count_posts_without_schema();
+
+    if ( $count === 0 ) {
+        return;
+    }
+
+    $report_url = esc_url( admin_url( 'admin.php?page=bbhcuschma-report' ) );
+    $remind_url = esc_url( wp_nonce_url( add_query_arg( 'bbhcuschma_opportunity_remind', '1', admin_url() ), 'bbhcuschma_opportunity_remind' ) );
+    $dismiss_url = esc_url( wp_nonce_url( add_query_arg( 'bbhcuschma_opportunity_dismiss', '1', admin_url() ), 'bbhcuschma_opportunity_dismiss' ) );
+    ?>
+    <div class="notice notice-info bbhcuschma-opportunity-notice" style="border-left-color: #0073aa; position: relative;">
+        <p style="margin: 0 0 10px 0; font-size: 14px;">
+            <strong><?php esc_html_e( 'Schema Opportunity:', 'bbh-custom-schema' ); ?></strong>
+            <?php
+            printf(
+                esc_html(
+                    /* translators: %d: Number of posts without schema */
+                    _n(
+                        'Schema not added to %d post/page. Add structured data to improve search visibility.',
+                        'Schema not added to %d posts/pages. Add structured data to improve search visibility.',
+                        $count,
+                        'bbh-custom-schema'
+                    )
+                ),
+                (int) $count
+            );
+            ?>
+        </p>
+        <p style="margin: 0 0 15px 0;">
+            <a href="<?php echo esc_url( $report_url ); ?>" class="button button-primary" style="margin-right: 8px;">
+                <?php esc_html_e( 'View Opportunities', 'bbh-custom-schema' ); ?>
+            </a>
+            <a href="<?php echo esc_url( $remind_url ); ?>" class="button" style="margin-right: 8px;">
+                <?php esc_html_e( 'Remind Me Later', 'bbh-custom-schema' ); ?>
+            </a>
+            <a href="<?php echo esc_url( $dismiss_url ); ?>" class="button" style="color: #72777c;">
+                <?php esc_html_e( 'Dismiss', 'bbh-custom-schema' ); ?>
+            </a>
+        </p>
+    </div>
+    <?php
+}
+add_action( 'admin_notices', 'bbhcuschma_opportunity_notice' );
+
+/**
+ * Handle opportunity notice actions.
+ */
+function bbhcuschma_handle_opportunity_actions() {
+    // Handle "Remind Me Later"
+    if ( isset( $_GET['bbhcuschma_opportunity_remind'] ) && '1' === $_GET['bbhcuschma_opportunity_remind'] ) {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        if ( ! check_admin_referer( 'bbhcuschma_opportunity_remind' ) ) {
+            return;
+        }
+
+        // Hide for 24 hours
+        $user_id = get_current_user_id();
+        update_user_meta( $user_id, 'bbhcuschma_opportunity_remind', time() + DAY_IN_SECONDS );
+
+        // Also set transient
+        $transient_key = 'bbhcuschma_opportunity_notice_' . $user_id;
+        set_transient( $transient_key, true, DAY_IN_SECONDS );
+
+        // Redirect back
+        wp_safe_redirect( remove_query_arg( array( 'bbhcuschma_opportunity_remind', '_wpnonce' ), wp_get_referer() ) );
+        exit;
+    }
+
+    // Handle "Dismiss"
+    if ( isset( $_GET['bbhcuschma_opportunity_dismiss'] ) && '1' === $_GET['bbhcuschma_opportunity_dismiss'] ) {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        if ( ! check_admin_referer( 'bbhcuschma_opportunity_dismiss' ) ) {
+            return;
+        }
+
+        // Permanently dismiss
+        update_option( 'bbhcuschma_opportunity_dismissed', true, false );
+
+        // Set transient to prevent re-show
+        $user_id = get_current_user_id();
+        $transient_key = 'bbhcuschma_opportunity_notice_' . $user_id;
+        set_transient( $transient_key, true, YEAR_IN_SECONDS );
+
+        // Redirect back
+        wp_safe_redirect( remove_query_arg( array( 'bbhcuschma_opportunity_dismiss', '_wpnonce' ), wp_get_referer() ) );
+        exit;
+    }
+}
+add_action( 'admin_init', 'bbhcuschma_handle_opportunity_actions' );

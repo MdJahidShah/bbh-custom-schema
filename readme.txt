@@ -5,7 +5,7 @@ Tags: schema, schema markup, structured data, json-ld, rich results
 Requires at least: 5.2
 Tested up to: 6.9
 Requires PHP: 7.2
-Stable tag: 1.2.3
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html  
 
@@ -206,6 +206,12 @@ After that, click **Schema Validity Check** to verify. You should see: "Valid JS
 
 = 1.2.3 =
 * New: Schema Combiner feature - to use Multiple Schema
+
+= 1.3.0 =
+* New: Quick Start onboarding page
+* New: First-time users see minimal UI with 3 schema buttons
+* New: FAQ Schema (Recommended), Article Schema, Custom JSON-LD options
+* New: Schema draft saves temporarily and applies on post save
 
 == Upgrade Notice ==
 The latest Version is compatible with previous version, So nothing to worry
